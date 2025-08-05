@@ -44,7 +44,7 @@ function reducer(state,action){
   sessionIdRef.current = state.session?.id;
 
   useEffect(()=>{
-    const socket = io(' https://cardplanning-2.onrender.com');
+    const socket = io('https://cardplanning-2.onrender.com');
     dispatch({type:'SET',payload:{socket}});
 
     socket.on('memberJoined',async()=>{
