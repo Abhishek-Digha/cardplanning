@@ -10,9 +10,22 @@ app.use(cors());
 app.use(express.json());
 
 const server = http.createServer(app);
+const allowedOrigins = [
+  'http://localhost:3000',
+  'https://abhishek-digha.github.io',
+  'https://abhishek-digha.github.io/cardplanning'
+];
+app.use(cors({
+  origin: allowedOrigins,
+  credentials: true
+}));
+
 const io = new Server(server, {
-  cors: { origin: 'http://localhost:3000' }
+  cors: { origin: allowedOrigins },
+  pingTimeout: 600000,    // 30 seconds
+  pingInterval: 300000    // 10 seconds
 });
+
 
 // In-memory stores
 const sessions = new Map();

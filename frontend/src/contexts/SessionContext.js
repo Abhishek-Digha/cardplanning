@@ -44,7 +44,12 @@ function reducer(state,action){
   sessionIdRef.current = state.session?.id;
 
   useEffect(()=>{
-    const socket = io('https://cardplanning-2.onrender.com');
+    const socket = io('https://cardplanning-2.onrender.com', {
+      reconnection: true,           // enable auto-reconnect (default: true)
+      reconnectionAttempts: Infinity,     // max attempts
+      reconnectionDelay: 600000,      // delay between attempts (ms)
+      reconnectionDelayMax: 1800000   // max delay (ms)
+    });
     dispatch({type:'SET',payload:{socket}});
 
     socket.on('memberJoined',async()=>{
