@@ -72,17 +72,20 @@ function reducer(state,action){
         if (!newActiveStory && stories.length > 0) {
           newActiveStory = stories[stories.length - 1];
         }
-        // Move the new/active story to the top, but keep all stories
+        // Always keep the active story at the top, no duplicates
         if (newActiveStory) {
           stories = [newActiveStory, ...stories.filter(s => s.id !== newActiveStory.id)];
         }
+        // Use backend voteCount and totalMembers
+        const voteCount = typeof newActiveStory?.voteCount === 'number' && !isNaN(newActiveStory.voteCount) ? newActiveStory.voteCount : 0;
+        const totalMembers = Array.isArray(updatedSession.members) ? updatedSession.members.length : 0;
         dispatch({type:'SET',payload:{
           session: { ...updatedSession },
           stories: [...stories],
           activeStory: newActiveStory,
           votes: {},
-          voteCount: 0,
-          totalMembers: 0,
+          voteCount,
+          totalMembers,
           isRevealed: false
         }});
       }
@@ -91,9 +94,11 @@ function reducer(state,action){
       if(sessionIdRef.current) {
         const updatedSession = await sessionAPI.getSession(sessionIdRef.current);
         const newActiveStory = updatedSession.stories.find(s=>s.id===id) || null;
-        // Always set votes to the story's votes, regardless of reveal state
-        // Move the active story to the top of the list
-        const stories = [newActiveStory, ...updatedSession.stories.filter(s => s.id !== newActiveStory.id)];
+        let stories = [...updatedSession.stories.filter(Boolean)];
+        // Always ensure the active story is present in the stories array, no duplicates
+        if (newActiveStory) {
+          stories = [newActiveStory, ...stories.filter(s => s.id !== newActiveStory.id)];
+        }
         dispatch({
           type: 'SET',
           payload: {
@@ -108,28 +113,79 @@ function reducer(state,action){
       }
     });
     socket.on('voteCountChanged',data=>{
-      dispatch({type:'SET_VOTE_COUNT',payload:data});
+      // Fetch the latest session data and always keep the active story in the stories array
+      (async () => {
+        if (sessionIdRef.current) {
+          const updatedSession = await sessionAPI.getSession(sessionIdRef.current);
+          let stories = [...updatedSession.stories.filter(Boolean)];
+          let newActiveStory = null;
+          if (updatedSession.activeStoryId) {
+            newActiveStory = stories.find(s => s.id === updatedSession.activeStoryId) || null;
+          }
+          if (!newActiveStory && stories.length > 0) {
+            newActiveStory = stories[stories.length - 1];
+          }
+          // Always keep the active story at the top, no duplicates
+          if (newActiveStory) {
+            stories = [newActiveStory, ...stories.filter(s => s.id !== newActiveStory.id)];
+          }
+          // Use the latest votes, voteCount, and totalMembers from the backend
+          const votes = newActiveStory?.votes || {};
+          // Always use the backend's voteCount for the active story, fallback to 0 if undefined
+          const voteCount = (typeof newActiveStory?.voteCount === 'number' && !isNaN(newActiveStory.voteCount)) ? newActiveStory.voteCount : 0;
+          const totalMembers = Array.isArray(updatedSession.members) ? updatedSession.members.length : 0;
+          const isRevealed = !!newActiveStory?.isRevealed;
+          dispatch({
+            type: 'SET',
+            payload: {
+              session: updatedSession,
+              stories,
+              activeStory: newActiveStory,
+              votes,
+              voteCount,
+              totalMembers,
+              isRevealed
+            }
+          });
+        }
+      })();
     });
     socket.on('votesRevealed',data=>{
-      // Remove the active story from the stories array after votes are revealed
-      dispatch((prevState) => {
-        const activeStoryId = prevState.activeStory?.id;
-        // Remove the active story from the stories array
-        const remainingStories = prevState.stories.filter(story => story.id !== activeStoryId);
-        // Set the next story as active, or null if none left
-        const nextActiveStory = remainingStories.length > 0 ? remainingStories[0] : null;
-        return {
-          type: 'SET',
-          payload: {
-            stories: remainingStories,
-            activeStory: nextActiveStory,
-            votes: {},
-            voteCount: 0,
-            totalMembers: prevState.totalMembers,
-            isRevealed: false
+      // After votes are revealed, fetch the latest session and keep the active story if present
+      (async () => {
+        if (sessionIdRef.current) {
+          const updatedSession = await sessionAPI.getSession(sessionIdRef.current);
+          let stories = [...updatedSession.stories.filter(Boolean)];
+          let newActiveStory = null;
+          if (updatedSession.activeStoryId) {
+            newActiveStory = stories.find(s => s.id === updatedSession.activeStoryId) || null;
           }
-        };
-      });
+          if (!newActiveStory && stories.length > 0) {
+            newActiveStory = stories[stories.length - 1];
+          }
+          // Always keep the active story at the top, no duplicates
+          if (newActiveStory) {
+            stories = [newActiveStory, ...stories.filter(s => s.id !== newActiveStory.id)];
+          }
+          // Use backend values for votes, voteCount, and totalMembers
+          const votes = newActiveStory?.votes || {};
+          const voteCount = (typeof newActiveStory?.voteCount === 'number' && !isNaN(newActiveStory.voteCount)) ? newActiveStory.voteCount : 0;
+          const totalMembers = Array.isArray(updatedSession.members) ? updatedSession.members.length : 0;
+          const isRevealed = !!newActiveStory?.isRevealed;
+          dispatch({
+            type: 'SET',
+            payload: {
+              session: updatedSession,
+              stories,
+              activeStory: newActiveStory,
+              votes,
+              voteCount,
+              totalMembers,
+              isRevealed
+            }
+          });
+        }
+      })();
     });
     // votesCleared handler removed (feature deprecated)
 

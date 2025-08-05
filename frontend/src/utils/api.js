@@ -11,6 +11,8 @@ export const sessionAPI = {
     API.post(`/sessions/${sid}/vote`,{userId:uid,storyId,points}).then(r=>r.data),
   revealVotes:(sid,storyId,uid)=>
     API.post(`/sessions/${sid}/stories/${storyId}/reveal`,{userId:uid}).then(r=>r.data),
+
   clearVotes:(sid,storyId,uid)=>
-    API.post(`/sessions/${sid}/stories/${storyId}/clear`,{userId:uid}).then(r=>r.data)
+    API.post(`/sessions/${sid}/stories/${storyId}/clear`,{userId:uid}).then(r=>r.data),
+
 };
