@@ -1,8 +1,11 @@
 {
+  "homepage": "https://abhishek-digha.github.io/cardplanning/",
   "name": "story-pointing-frontend",
   "version": "1.0.0",
   "scripts": {
     "start": "react-scripts start",
+    "predeploy": "npm run build",
+    "deploy": "gh-pages -d build",
     "build": "react-scripts build"
   },
   "dependencies": {
@@ -23,5 +26,8 @@
       "last 1 firefox version",
       "last 1 safari version"
     ]
+  },
+  "devDependencies": {
+    "gh-pages": "^6.3.0"
   }
 }
