@@ -20,10 +20,12 @@ app.use(cors({
   credentials: true
 }));
 
+// Socket.io setup
 const io = new Server(server, {
-  cors: { origin: allowedOrigins }
+  cors: { origin: allowedOrigins },
+  pingTimeout: 600000,    // 10 minutes
+  pingInterval: 300000    // 5 min seconds
 });
-
 
 // In-memory stores
 const sessions = new Map();
