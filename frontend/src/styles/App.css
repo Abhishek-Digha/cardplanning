@@ -1,0 +1,60 @@
+/* Reset & Body */
+*{margin:0;padding:0;box-sizing:border-box;}
+body{font-family:sans-serif;background:#f5f5f5;}
+
+/* LandingPage */
+.landing-page{
+  display:flex;justify-content:center;align-items:center;
+  height:100vh;background:linear-gradient(135deg,#667eea,#764ba2);
+  color:white;
+}
+.container{
+  background:rgba(255,255,255,0.1);padding:2rem;border-radius:15px;
+  text-align:center;max-width:400px;width:90%;
+}
+.container input, .container button{
+  width:100%;margin:0.5rem 0;padding:0.8rem;border-radius:5px;
+  border:none;font-size:1rem;
+}
+.container button{cursor:pointer;font-weight:bold;}
+.error-message{background:#dc3545;padding:0.8rem;border-radius:5px;}
+.toggle p{margin-top:1rem;}
+.toggle span{cursor:pointer;text-decoration:underline;}
+
+/* SessionRoom */
+.session-room header{
+  display:flex;justify-content:space-between;
+  padding:1rem;background:white;box-shadow:0 2px 4px rgba(0,0,0,0.1);
+}
+.session-room .content{
+  display:grid;grid-template-columns:300px 1fr;gap:1rem;
+  padding:1rem;
+}
+.loading{display:flex;justify-content:center;align-items:center;height:100vh;}
+
+/* MembersList & StoryManager */
+.members-list, .story-manager{
+  background:white;padding:1rem;border-radius:10px;
+  box-shadow:0 2px 10px rgba(0,0,0,0.1);margin-bottom:1rem;
+}
+.member{padding:0.5rem 0;border-bottom:1px solid #eee;}
+.member:last-child{border:none;}
+.admin-badge{background:#007bff;color:white;padding:0.2rem 0.5rem;border-radius:10px;font-size:0.7rem;}
+.story-manager button{margin-top:0.5rem;padding:0.5rem;border:none;background:#28a745;color:white;border-radius:5px;cursor:pointer;}
+.create-story-form input, .create-story-form textarea{
+  width:100%;margin:0.5rem 0;padding:0.5rem;border:1px solid #ddd;border-radius:3px;
+}
+
+/* VotingBoard */
+.voting-board{background:white;padding:2rem;border-radius:10px;box-shadow:0 2px 10px rgba(0,0,0,0.1);text-align:center;}
+.cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(60px,1fr));gap:0.5rem;margin-top:1rem;}
+.cards button{padding:1rem;border:2px solid #dee2e6;border-radius:5px;background:white;cursor:pointer;transition:all 0.3s;}
+.cards button:hover{border-color:#007bff;transform:translateY(-3px);}
+.cards .selected{background:#007bff;color:white;border-color:#007bff;}
+.results{margin-top:1rem;text-align:left;}
+
+/* AdminControls */
+.admin-controls{display:flex;gap:1rem;margin-top:1rem;}
+.admin-controls button{flex:1;padding:0.8rem;border:none;border-radius:5px;cursor:pointer;font-weight:bold;}
+.admin-controls button:first-child{background:#28a745;color:white;}
+.admin-controls button:last-child{background:#ffc107;color:#212529;}
