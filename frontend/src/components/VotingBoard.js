@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useSession } from '../contexts/SessionContext';
 import { sessionAPI } from '../utils/api';
+import VoteFrequencyDisplay from './VoteFrequencyDisplay';
 
 const POINTS=[1,2,3,5,8,13,21,'?'];
 
@@ -67,7 +68,7 @@ export default function VotingBoard(){
         </div>
       ) : (
         <div className="results">
-          {/* Average display removed as requested */}
+          <VoteFrequencyDisplay />
           <div style={{
             background: 'linear-gradient(90deg, #f8fafc 0%, #e0e7ef 100%)',
             borderRadius: '20px',

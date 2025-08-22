@@ -7,7 +7,7 @@ const initialState = {
   session:null, user:null, socket:null,
   stories:[], activeStory:null,
   votes:{}, voteCount:0, totalMembers:0,
-  isRevealed:false
+  isRevealed:false, voteFrequency: {}
 };
 
 function reducer(state,action){
@@ -91,7 +91,8 @@ function reducer(state,action){
           votes: {},
           voteCount,
           totalMembers,
-          isRevealed: false
+          isRevealed: false,
+          voteFrequency: {}
         }});
       }
     });
@@ -112,7 +113,8 @@ function reducer(state,action){
             activeStory: newActiveStory,
             votes: newActiveStory?.votes || {},
             voteCount: newActiveStory?.voteCount || 0,
-            isRevealed: !!newActiveStory?.isRevealed
+            isRevealed: !!newActiveStory?.isRevealed,
+            voteFrequency: newActiveStory?.voteFrequency || {}
           }
         });
       }
@@ -160,6 +162,7 @@ function reducer(state,action){
       (async () => {
         if (sessionIdRef.current) {
           const updatedSession = await sessionAPI.getSession(sessionIdRef.current);
+          const voteFrequency = data.voteFrequency || {};
           let stories = [...updatedSession.stories.filter(Boolean)];
           let newActiveStory = null;
           if (updatedSession.activeStoryId) {
@@ -186,7 +189,8 @@ function reducer(state,action){
               votes,
               voteCount,
               totalMembers,
-              isRevealed
+              isRevealed,
+              voteFrequency
             }
           });
         }
