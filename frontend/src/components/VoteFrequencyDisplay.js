@@ -19,14 +19,17 @@ const VoteFrequencyDisplay = () => {
         }, {})
       );
 
-  // Find majority vote
+  // Find majority vote and calculate statistics
   let majorityVote = null;
   let maxCount = 0;
+  let totalVotes = 0;
+  
   frequencies.forEach(([vote, count]) => {
     if (count > maxCount) {
       maxCount = count;
       majorityVote = vote;
     }
+    totalVotes += count;
   });
 
   // Sort frequencies by point value
@@ -43,24 +46,59 @@ const VoteFrequencyDisplay = () => {
       boxShadow: '0 4px 6px rgba(0,0,0,0.1)',
       border: '1px solid #e0e7ef'
     }}>
-      <div style={{ 
-        display: 'flex', 
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        marginBottom: '15px'
-      }}>
-        <h3 style={{ margin: 0, color: '#2d3a4a' }}>Vote Summary</h3>
-        {majorityVote && (
-          <div style={{
-            backgroundColor: '#e8f5e9',
-            padding: '8px 16px',
-            borderRadius: '8px',
-            color: '#2e7d32',
-            fontWeight: 'bold'
-          }}>
-            Most Common: {majorityVote} ({voteFrequency[majorityVote]} votes)
+      <div style={{ marginBottom: '20px' }}>
+        <div style={{ 
+          display: 'flex', 
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          marginBottom: '15px'
+        }}>
+          <h3 style={{ margin: 0, color: '#2d3a4a' }}>Vote Summary</h3>
+          <div style={{ display: 'flex', gap: '12px' }}>
+            {majorityVote && (
+              <div style={{
+                backgroundColor: '#e8f5e9',
+                padding: '8px 16px',
+                borderRadius: '8px',
+                color: '#2e7d32',
+                fontWeight: 'bold'
+              }}>
+                Most Common: {majorityVote} ({maxCount} votes)
+              </div>
+            )}
+            <div style={{
+              backgroundColor: '#f3f6f9',
+              padding: '8px 16px',
+              borderRadius: '8px',
+              color: '#1976d2',
+              fontWeight: 'bold'
+            }}>
+              Participation: {totalVotes}/{totalMembers} ({Math.round((totalVotes/totalMembers) * 100)}%)
+            </div>
           </div>
-        )}
+        </div>
+        {/* Stats Row */}
+        <div style={{
+          display: 'flex',
+          gap: '16px',
+          marginBottom: '15px',
+          backgroundColor: '#f8fafc',
+          padding: '12px',
+          borderRadius: '8px'
+        }}>
+          <div style={{ flex: 1, textAlign: 'center' }}>
+            <div style={{ fontSize: '0.9rem', color: '#64748b' }}>Max Votes</div>
+            <div style={{ fontSize: '1.2rem', color: '#2d3a4a', fontWeight: 'bold' }}>{maxCount}</div>
+          </div>
+          <div style={{ flex: 1, textAlign: 'center' }}>
+            <div style={{ fontSize: '0.9rem', color: '#64748b' }}>Different Values</div>
+            <div style={{ fontSize: '1.2rem', color: '#2d3a4a', fontWeight: 'bold' }}>{frequencies.length}</div>
+          </div>
+          <div style={{ flex: 1, textAlign: 'center' }}>
+            <div style={{ fontSize: '0.9rem', color: '#64748b' }}>Total Votes</div>
+            <div style={{ fontSize: '1.2rem', color: '#2d3a4a', fontWeight: 'bold' }}>{totalVotes}</div>
+          </div>
+        </div>
       </div>
       
       <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>

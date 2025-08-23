@@ -7,7 +7,7 @@ const initialState = {
   session:null, user:null, socket:null,
   stories:[], activeStory:null,
   votes:{}, voteCount:0, totalMembers:0,
-  isRevealed:false, voteFrequency: {}
+  isRevealed:false
 };
 
 function reducer(state,action){
@@ -44,28 +44,50 @@ function reducer(state,action){
   sessionIdRef.current = state.session?.id;
 
   useEffect(()=>{
-    const socket = io('https://cardplanning-2.onrender.com', {
-      reconnection: true,           // enable auto-reconnect (default: true)
-      reconnectionAttempts: Infinity,     // max attempts
-      reconnectionDelay: 600000,      // delay between attempts (ms)
-      reconnectionDelayMax: 1800000   // max delay (ms)
-    });
+    const socket = io('https://cardplanning-2.onrender.com');
     dispatch({type:'SET',payload:{socket}});
 
-    socket.on('memberJoined',async()=>{
-      if(sessionIdRef.current) {
-        const updatedSession = await sessionAPI.getSession(sessionIdRef.current);
-        // Always show active story first
-        let stories = updatedSession.stories;
-        if (updatedSession.activeStoryId) {
-          const activeStory = updatedSession.stories.find(s => s.id === updatedSession.activeStoryId);
-          if (activeStory) {
-            stories = [activeStory, ...updatedSession.stories.filter(s => s.id !== activeStory.id)];
-          }
-        }
-        dispatch({type:'SET',payload:{session: updatedSession, stories}});
+   socket.on('memberJoined', async () => {
+  if (sessionIdRef.current) {
+    const updatedSession = await sessionAPI.getSession(sessionIdRef.current);
+
+    // Always show active story first
+    let stories = updatedSession.stories;
+    let newActiveStory = null;
+    if (updatedSession.activeStoryId) {
+      newActiveStory = updatedSession.stories.find(
+        (s) => s.id === updatedSession.activeStoryId
+      ) || null;
+      if (newActiveStory) {
+        stories = [newActiveStory, ...updatedSession.stories.filter(s => s.id !== newActiveStory.id)];
       }
+    }
+
+    const votes = newActiveStory?.votes || {};
+    const voteCount =
+      typeof newActiveStory?.voteCount === 'number' && !isNaN(newActiveStory.voteCount)
+        ? newActiveStory.voteCount
+        : 0;
+    const totalMembers = Array.isArray(updatedSession.members)
+      ? updatedSession.members.length
+      : 0;
+    const isRevealed = !!newActiveStory?.isRevealed; // ✅ ensure new joiners respect revealed state
+
+    dispatch({
+      type: 'SET',
+      payload: {
+        session: updatedSession,
+        stories,
+        activeStory: newActiveStory,
+        votes,
+        voteCount,
+        totalMembers,
+        isRevealed
+      },
     });
+  }
+});
+
     socket.on('storyCreated',async()=>{
       if(sessionIdRef.current) {
         const updatedSession = await sessionAPI.getSession(sessionIdRef.current);
@@ -91,8 +113,7 @@ function reducer(state,action){
           votes: {},
           voteCount,
           totalMembers,
-          isRevealed: false,
-          voteFrequency: {}
+          isRevealed: false
         }});
       }
     });
@@ -113,8 +134,7 @@ function reducer(state,action){
             activeStory: newActiveStory,
             votes: newActiveStory?.votes || {},
             voteCount: newActiveStory?.voteCount || 0,
-            isRevealed: !!newActiveStory?.isRevealed,
-            voteFrequency: newActiveStory?.voteFrequency || {}
+            isRevealed: !!newActiveStory?.isRevealed
           }
         });
       }
@@ -162,7 +182,6 @@ function reducer(state,action){
       (async () => {
         if (sessionIdRef.current) {
           const updatedSession = await sessionAPI.getSession(sessionIdRef.current);
-          const voteFrequency = data.voteFrequency || {};
           let stories = [...updatedSession.stories.filter(Boolean)];
           let newActiveStory = null;
           if (updatedSession.activeStoryId) {
@@ -189,8 +208,7 @@ function reducer(state,action){
               votes,
               voteCount,
               totalMembers,
-              isRevealed,
-              voteFrequency
+              isRevealed
             }
           });
         }
