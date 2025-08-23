@@ -9,6 +9,24 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
+// In-memory sessions store
+function getSessionByIdOrCode(idOrCode) {
+  // First check by ID key
+  if (sessions.has(idOrCode)) {
+    return sessions.get(idOrCode);
+  }
+
+  // Otherwise search by code
+  for (const session of sessions.values()) {
+    if (session.code === idOrCode) {
+      return session;
+    }
+  }
+
+  return null;
+}
+
+
 const server = http.createServer(app);
 const allowedOrigins = [
   'http://localhost:3000',
@@ -20,12 +38,12 @@ app.use(cors({
   credentials: true
 }));
 
+// Socket.io setup
 const io = new Server(server, {
   cors: { origin: allowedOrigins },
-   pingTimeout: 600000,    // 30 seconds
-  pingInterval: 300000    // 10 seconds
+  pingTimeout: 600000,    // 10 minutes
+  pingInterval: 300000    // 5 min seconds
 });
-
 
 // In-memory stores
 const sessions = new Map();
@@ -47,7 +65,6 @@ class Story {
     this.description = desc;
     this.votes = new Map();
     this.isRevealed = false;
-    this.voteFrequency = {};
   }
 }
 
@@ -65,60 +82,53 @@ app.post('/api/sessions', (req,res)=>{
   });
 });
 
+// updated by me
 // Join session
-app.post('/api/sessions/join',(req,res)=>{
-  const { sessionCode,userName } = req.body;
-  
-  // Validate input
-  if (!sessionCode || !userName) {
-    return res.status(400).json({error:'Session code and user name are required'});
-  }
-  
-  const session = [...sessions.values()].find(s=>s.code===sessionCode.toUpperCase());
-  if(!session) return res.status(404).json({error:'Session not found'});
-  
-  const userId = uuidv4();
-  const user = {id:userId, name:userName, isAdmin:false};
-  
-  try {
-    session.members.push(user);
-    io.to(session.id).emit('memberJoined', user);
-    res.json({
-      sessionId: session.id,
-      sessionCode: session.code,
-      userId,
-      user
-    });
-  } catch (error) {
-    console.error('Error joining session:', error);
-    res.status(500).json({error:'Failed to join session'});
-  }
-});
+app.post('/api/sessions/join', (req, res) => {
+  const { sessionCode, userName } = req.body;
+  const session = [...sessions.values()].find(s => s.code === sessionCode);
+  if (!session) return res.status(404).json({ error: 'Session not found' });
 
-// Get session
-app.get('/api/sessions/:id',(req,res)=>{
-  const session = sessions.get(req.params.id);
-  if(!session) return res.status(404).json({error:'Session not found'});
-  
-  // Deep clone and convert votes Map to object for each story
+  const userId = uuidv4();
+  const user = { id: userId, name: userName, isAdmin: false };
+  session.members.push(user);
+
+  io.to(session.id).emit('memberJoined', user);
+
+  // Send full session snapshot (including revealed votes)
   const sessionObj = {
-    id: session.id,
-    code: session.code,
-    adminId: session.adminId,
-    members: session.members,
-    activeStoryId: session.activeStoryId,
+    ...session,
     stories: session.stories.map(story => ({
       ...story,
-      votes: Object.fromEntries(story.votes),
-      voteFrequency: story.voteFrequency
+      votes: Object.fromEntries(story.votes)   // Convert Map → object
     }))
   };
-  
+
+  res.json({
+    sessionId: session.id,
+    sessionCode: session.code,
+    userId,
+    user,
+    session: sessionObj
+  });
+});
+
+
+// Get session
+ app.get('/api/sessions/:id',(req,res)=>{
+  const session = sessions.get(req.params.id);
+  if(!session) return res.status(404).json({error:'Session not found'});
+  // Deep clone and convert votes Map to object for each story
+  const sessionObj = JSON.parse(JSON.stringify(session));
+  sessionObj.stories = session.stories.map(story => ({
+    ...story,
+    votes: Object.fromEntries(story.votes)
+  }));
   res.json(sessionObj);
 });
 
 // Create story
-app.post('/api/sessions/:id/stories',(req,res)=>{
+/*app.post('/api/sessions/:id/stories',(req,res)=>{
   const { title,description,userId } = req.body;
   const session = sessions.get(req.params.id);
   console.log('DEBUG: Incoming userId:', userId);
@@ -128,43 +138,116 @@ app.post('/api/sessions/:id/stories',(req,res)=>{
     console.log('DEBUG: Member not admin or not found:', member);
     return res.status(403).json({error:'Only admin'});
   }
+  const story=new Story(title,description);
+  session.stories.push(story);
+  session.activeStoryId = story.id;
+  io.to(session.id).emit('storyCreated',story);
+  io.to(session.id).emit('activeStoryChanged',story.id);
+  res.json(story);
+});
+*/
+//changed by me
+// Vote
+/*app.post('/api/sessions/:id/vote',(req,res)=>{
+  const { userId,storyId,points }=req.body;
+  const session=sessions.get(req.params.id);
+  const story=session.stories.find(s=>s.id===storyId);
+  if(story.isRevealed) return res.status(400).json({error:'Already revealed'});
+  story.votes.set(userId,points);
+  io.to(session.id).emit('voteCountChanged',{
+    storyId, voteCount:story.votes.size, totalMembers:session.members.length
+  });
+  res.json({success:true});
+});
+
+*/
+
+// Reveal votes
+/*app.post('/api/sessions/:id/stories/:sid/reveal',(req,res)=>{
+  const { userId } = req.body;
+  const session=sessions.get(req.params.id);
+  const member=session.members.find(m=>m.id===userId);
+  if(!member?.isAdmin) return res.status(403).json({error:'Only admin'});
+  const story=session.stories.find(s=>s.id===req.params.sid);
+  story.isRevealed=true;
+  io.to(session.id).emit('votesRevealed',{
+    storyId:story.id,
+    votes:Object.fromEntries(story.votes)
+  });
+  res.json({success:true});
+});
+*/
+// Clear votes
+/*app.post('/api/sessions/:id/stories/:sid/clear',(req,res)=>{
+  //const { userId } = req.body;
+  //const session=sessions.get(req.params.id);
+  //const member=session.members.find(m=>m.id===userId);
+  //if(!member?.isAdmin) return res.status(403).json({error:'Only admin'});
+  //const story=session.stories.find(s=>s.id===req.params.sid);
+  //story.votes.clear(); story.isRevealed=false;
+  //io.to(session.id).emit('votesCleared',story.id);
+  //res.json({success:true});
+//});
+*/
+// modified by me
+// Socket.io
+// Socket.io
+io.on('connection', socket => {
+  socket.on('joinSession', idOrCode => {
+    const session = getSessionByIdOrCode(idOrCode);
+    if (!session) {
+      socket.emit('error', { error: 'Session not found' });
+      return;
+    }
+
+    // Always join by UUID for consistency
+    socket.join(session.id);
+
+    // Convert votes Map -> plain object
+    const sessionObj = {
+      ...session,
+      stories: session.stories.map(story => ({
+        ...story,
+        votes: Object.fromEntries(story.votes)
+      }))
+    };
+
+    socket.emit('sessionSnapshot', sessionObj);
+  });
+});
+
+
+
+
+//changes by me
+
+// Get session
+// Create story
+app.post('/api/sessions/:id/stories',(req,res)=>{
+  const { title,description,userId } = req.body;
+  const session = getSessionByIdOrCode(req.params.id);
+  if(!session) return res.status(404).json({error:'Session not found'});
+  const member = session.members.find(m=>m.id===userId);
+  if(!member?.isAdmin) return res.status(403).json({error:'Only admin'});
   const story = new Story(title,description);
   session.stories.push(story);
   session.activeStoryId = story.id;
-  
-  // Convert story votes Map to plain object for sending
-  const storyToSend = {
-    ...story,
-    votes: {},
-    voteFrequency: {}
-  };
-  
-  io.to(session.id).emit('storyCreated', storyToSend);
-  io.to(session.id).emit('activeStoryChanged', story.id);
-  res.json(storyToSend);
+  io.to(session.id).emit('storyCreated',story);
+  io.to(session.id).emit('activeStoryChanged',story.id);
+  res.json(story);
 });
 
 // Vote
 app.post('/api/sessions/:id/vote',(req,res)=>{
   const { userId,storyId,points }=req.body;
-  const session=sessions.get(req.params.id);
-  const story=session.stories.find(s=>s.id===storyId);
+  const session = getSessionByIdOrCode(req.params.id);
+  if(!session) return res.status(404).json({error:'Session not found'});
+  const story = session.stories.find(s=>s.id===storyId);
+  if(!story) return res.status(404).json({error:'Story not found'});
   if(story.isRevealed) return res.status(400).json({error:'Already revealed'});
-  
   story.votes.set(userId,points);
-  
-  // Update vote frequency
-  story.voteFrequency = {};
-  const votes = Array.from(story.votes.values());
-  votes.forEach(vote => {
-    story.voteFrequency[vote] = (story.voteFrequency[vote] || 0) + 1;
-  });
-  
   io.to(session.id).emit('voteCountChanged',{
-    storyId,
-    voteCount: story.votes.size,
-    totalMembers: session.members.length,
-    voteFrequency: story.voteFrequency
+    storyId, voteCount:story.votes.size, totalMembers:session.members.length
   });
   res.json({success:true});
 });
@@ -172,27 +255,16 @@ app.post('/api/sessions/:id/vote',(req,res)=>{
 // Reveal votes
 app.post('/api/sessions/:id/stories/:sid/reveal',(req,res)=>{
   const { userId } = req.body;
-  const session=sessions.get(req.params.id);
-  const member=session.members.find(m=>m.id===userId);
+  const session = getSessionByIdOrCode(req.params.id);
+  if(!session) return res.status(404).json({error:'Session not found'});
+  const member = session.members.find(m=>m.id===userId);
   if(!member?.isAdmin) return res.status(403).json({error:'Only admin'});
-  const story=session.stories.find(s=>s.id===req.params.sid);
+  const story = session.stories.find(s=>s.id===req.params.sid);
+  if(!story) return res.status(404).json({error:'Story not found'});
   story.isRevealed=true;
-  
-  // Find the majority vote (most common) from existing vote frequency
-  let majorityVote = null;
-  let maxCount = 0;
-  Object.entries(story.voteFrequency).forEach(([vote, count]) => {
-    if (count > maxCount) {
-      maxCount = count;
-      majorityVote = vote;
-    }
-  });
-  
-  io.to(session.id).emit('votesRevealed', {
-    storyId: story.id,
-    votes: Object.fromEntries(story.votes),
-    voteFrequency: story.voteFrequency,
-    majorityVote
+  io.to(session.id).emit('votesRevealed',{
+    storyId:story.id,
+    votes:Object.fromEntries(story.votes)
   });
   res.json({success:true});
 });
@@ -200,47 +272,16 @@ app.post('/api/sessions/:id/stories/:sid/reveal',(req,res)=>{
 // Clear votes
 app.post('/api/sessions/:id/stories/:sid/clear',(req,res)=>{
   const { userId } = req.body;
-  const session=sessions.get(req.params.id);
-  const member=session.members.find(m=>m.id===userId);
+  const session = getSessionByIdOrCode(req.params.id);
+  if(!session) return res.status(404).json({error:'Session not found'});
+  const member = session.members.find(m=>m.id===userId);
   if(!member?.isAdmin) return res.status(403).json({error:'Only admin'});
-  const story=session.stories.find(s=>s.id===req.params.sid);
-  story.votes.clear();
-  story.voteFrequency = {};
-  story.isRevealed=false;
+  const story = session.stories.find(s=>s.id===req.params.sid);
+  if(!story) return res.status(404).json({error:'Story not found'});
+  story.votes.clear(); story.isRevealed=false;
   io.to(session.id).emit('votesCleared',story.id);
   res.json({success:true});
 });
 
-// Socket.io
-io.on('connection', socket => {
-  // Handle session join with user data
-  socket.on('joinSession', async ({ sessionId, userId }) => {
-    if (!sessionId || !userId) return;
-    
-    const session = sessions.get(sessionId);
-    if (!session) return;
-    
-    // Join the session room
-    await socket.join(sessionId);
-    
-    // Send current session state to the reconnecting user
-    const sessionState = {
-      members: session.members,
-      stories: session.stories.map(story => ({
-        ...story,
-        votes: Object.fromEntries(story.votes),
-        voteFrequency: story.voteFrequency
-      })),
-      activeStoryId: session.activeStoryId
-    };
-    
-    socket.emit('sessionState', sessionState);
-  });
-
-  // Handle disconnection
-  socket.on('disconnect', () => {
-    // Socket.IO automatically handles room cleanup
-  });
-});
 
 server.listen(5000,()=>console.log('Server running on port 5000'));
